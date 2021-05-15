@@ -1867,7 +1867,7 @@ If you use a tool such as Postman to test your API, the token can be fetched and
 
 ### Run using Docker Compose
 
-You can run whole application using [docker compose](https://docs.docker.com/compose/) from root folder:
+You can run whole application using [docker compose](https://docs.docker.com/compose/) from src folder:
 ```shell
 docker-compose up
 ```

@@ -1,11 +1,10 @@
 #See https://aka.ms/containerfastmode to understand how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
-FROM mcr.microsoft.com/dotnet/core/aspnet:3.1-buster-slim AS base
+FROM mcr.microsoft.com/dotnet/aspnet:3.1 AS base
 WORKDIR /app
 EXPOSE 80
-EXPOSE 443
 
-FROM mcr.microsoft.com/dotnet/core/sdk:3.1-buster AS build
+FROM mcr.microsoft.com/dotnet/sdk:3.1 AS build
 WORKDIR /src
 COPY ["API/CompanyName.MyMeetings.API/CompanyName.MyMeetings.API.csproj", "API/CompanyName.MyMeetings.API/"]
 COPY ["Modules/UserAccess/Application/CompanyName.MyMeetings.Modules.UserAccess.Application.csproj", "Modules/UserAccess/Application/"]
@@ -39,7 +38,4 @@ RUN dotnet publish "CompanyName.MyMeetings.API.csproj" -c Release -o /app/publis
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-
-ADD entrypoint.sh /
-
-ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
+ENTRYPOINT ["dotnet", "CompanyName.MyMeetings.API.dll"]

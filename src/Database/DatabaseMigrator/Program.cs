@@ -1,14 +1,17 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using System.Threading.Tasks;
 using DbUp;
+using DbUp.Engine;
 using DbUp.ScriptProviders;
 using Serilog;
 using Serilog.Formatting.Compact;
 
 namespace DatabaseMigrator
 {
-    class Program
+    internal class Program
     {
-        static int Main(string[] args)
+        private static async Task<int> Main(string[] args)
         {
             var logsPath = "logs\\migration-logs";
 
@@ -19,18 +22,20 @@ namespace DatabaseMigrator
 
             logger.Information("Logger configured. Starting migration...");
 
-            if (args.Length != 2)
+            if (args.Length != 3)
             {
-                logger.Error("Invalid arguments. Execution: DatabaseMigrator [connectionString] [pathToScripts].");
+                logger.Error("Invalid arguments. Execution: DatabaseMigrator [connectionString] [pathToScripts] [timeout].");
 
                 logger.Information("Migration stopped");
 
                 return -1;
             }
 
-            var connectionString = args[0];
+            string connectionString = args[0];
 
-            var scriptsPath = args[1];
+            string scriptsPath = args[1];
+
+            string timeoutArg = args[2];
 
             if (!Directory.Exists(scriptsPath))
             {
@@ -39,11 +44,19 @@ namespace DatabaseMigrator
                 return -1;
             }
 
+            if (!int.TryParse(timeoutArg, out int timeout))
+            {
+                logger.Information($"Timeout {timeoutArg} is not a valid integer");
+
+                return -1;
+            }
+
             var serilogUpgradeLog = new SerilogUpgradeLog(logger);
 
-            var upgrader =
+            UpgradeEngine upgradeEngine =
                 DeployChanges.To
                     .SqlDatabase(connectionString)
+                    .WithExecutionTimeout(TimeSpan.FromSeconds(timeout))
                     .WithScriptsFromFileSystem(scriptsPath, new FileSystemScriptOptions
                     {
                         IncludeSubDirectories = true
@@ -52,9 +65,25 @@ namespace DatabaseMigrator
                     .JournalToSqlTable("app", "MigrationsJournal")
                     .Build();
 
-            var result = upgrader.PerformUpgrade();
+            DatabaseUpgradeResult result = null;
+            DateTime dateTimeTimeout = DateTime.Now.AddSeconds(timeout);
+            while (result is null && DateTime.Now < dateTimeTimeout)
+            {
+                try
+                {
+                    result = upgradeEngine.PerformUpgrade();
+                }
+                catch (NullReferenceException)
+                {
+                    // Throw NullReferenceException when database not available yet
+                    const int retryDelay = 5;
+                    logger.Information($"Unable to connect to database, retry in {retryDelay} seconds.");
+                    await Task.Delay(TimeSpan.FromSeconds(retryDelay));
+                }
+            }
 
-            if (!result.Successful)
+
+            if (result is null || !result.Successful)
             {
                 logger.Information("Migration failed");
 

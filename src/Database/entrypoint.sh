@@ -12,7 +12,7 @@ sleep 30 ;
 echo 'Create database..' ;
 
 # Create database
-/opt/mssql-tools/bin/sqlcmd -d master -i /scripts/CreateDatabase_Linux.sql -U sa -P Test@12345 ;
+/opt/mssql-tools/bin/sqlcmd -d master -i /scripts/CreateDatabase_Linux.sql -U sa -P $SA_PASSWORD ;
 
 echo 'Database created' ;
 

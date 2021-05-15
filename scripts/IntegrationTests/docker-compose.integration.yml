@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  database_migrator:
+    image: ${DOCKER_REGISTRY-}databasemigrator-integration
+    environment:
+      - MSSQL_SERVER=database
+      - MSSQL_PORT
+      - MSSQL_DATABASE
+      - MSSQL_USER
+      - MSSQL_PASSWORD=${SA_PASSWORD}
+    build:
+      context: ../../src/Database/
+      dockerfile: ./Dockerfile_DatabaseMigrator
+    depends_on:
+      - database
+
+  database:
+    image: ${DOCKER_REGISTRY-}database-integration
+    ports:
+      - "${MSSQL_PORT}:${MSSQL_PORT}"
+    environment:
+      - ACCEPT_EULA
+      - MSSQL_PID
+      - SA_PASSWORD
+    build:
+        context: ../../src/Database/
+        dockerfile: ./Dockerfile
+    restart: on-failure

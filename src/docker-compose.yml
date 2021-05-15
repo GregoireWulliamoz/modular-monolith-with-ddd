@@ -1,0 +1,44 @@
+version: '3.9'
+
+services:
+  companyname.mymeetings.api:
+    image: ${DOCKER_REGISTRY-}companynamemymeetingsapi
+    build:
+      context: .
+      dockerfile: API/CompanyName.MyMeetings.API/Dockerfile
+    ports:
+      - "5000:80"
+    environment:
+        - Meetings_MeetingsConnectionString=Server=database,${MSSQL_PORT};Database=${MSSQL_DATABASE};User=${MSSQL_USER};Password=${SA_PASSWORD}
+    depends_on:
+      - database_migrator
+    restart: on-failure
+
+  database_migrator:
+    image: ${DOCKER_REGISTRY-}databasemigrator
+    environment:
+      - MSSQL_SERVER=database
+      - MSSQL_PORT
+      - MSSQL_DATABASE
+      - MSSQL_USER
+      - MSSQL_PASSWORD=${SA_PASSWORD}
+    build:
+      context: ./Database/
+      dockerfile: ./Dockerfile_DatabaseMigrator
+    depends_on:
+      - database
+
+  database:
+    image: ${DOCKER_REGISTRY-}database
+    ports:
+      - "${MSSQL_PORT}:${MSSQL_PORT}"
+    environment:
+      - ACCEPT_EULA
+      - MSSQL_PID
+      - SA_PASSWORD
+    build:
+        context: ./Database/
+        dockerfile: ./Dockerfile
+    volumes:
+      - ./.docker/mssql/data/:/var/opt/mssql/data
+    restart: on-failure
